@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Will you be my valentine?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-top: #fff5f8;
+      --bg-bottom: #ffe0ea;
+      --text: #7a3550;
+      --yes: #ff5c8a;
+      --yes-hover: #f0437a;
+      --no: #b8a1e3;
+      --no-hover: #a58bd6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Gaegu", "Comic Sans MS", "Segoe Print", cursive;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      background-attachment: fixed;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+    .wrap { position: relative; z-index: 2; padding: 24px 16px; width: 100%; }
+    #gif {
+      width: 250px;
+      max-width: 70vw;
+      height: auto;
+      display: block;
+      margin: 0 auto 8px;
+      border-radius: 18px;
+    }
+    h1 {
+      font-size: clamp(2rem, 7vw, 3.2rem);
+      font-weight: 700;
+      margin: 0 0 18px;
+      line-height: 1.15;
+    }
+    .buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      color: #fff;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(255, 92, 138, .25);
+      transition: font-size .2s ease, padding .2s ease, transform .1s ease, background .2s ease;
+    }
+    button:active { transform: scale(.96); }
+    #yes { background: var(--yes); font-size: 22px; padding: 10px 26px; }
+    #no  { background: var(--no);  font-size: 20px; padding: 10px 20px; box-shadow: 0 6px 16px rgba(150, 120, 210, .25); }
+    #yes:hover { background: var(--yes-hover); }
+    #no:hover  { background: var(--no-hover); }
+
+    /* Hearts layer */
+    #hearts {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .heart {
+      position: absolute;
+      user-select: none;
+      will-change: transform, opacity;
+    }
+    .rise { bottom: -40px; animation: rise linear forwards; }
+    .fall { top: -40px;    animation: fall linear forwards; }
+    @keyframes rise {
+      0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+      10%  { opacity: .85; }
+      100% { transform: translateY(-110vh) translateX(var(--drift)) rotate(var(--spin)); opacity: 0; }
+    }
+    @keyframes fall {
+      0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+      8%   { opacity: .95; }
+      100% { transform: translateY(110vh) translateX(var(--drift)) rotate(var(--spin)); opacity: .9; }
+    }
+
+    #musicToggle {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 3;
+      background: #fff;
+      color: var(--yes);
+      font-size: 22px;
+      padding: 6px 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    }
+  </style>
+</head>
+<body>
+  <div id="hearts"></div>
+  <button id="musicToggle" title="Music on/off">🔇</button>
+
+  <div class="wrap" id="app">
+    <img id="gif" src="" alt="" />
+    <h1 id="question">Will you be my valentine, boo?</h1>
+    <div class="buttons" id="buttons">
+      <button id="yes">Yes</button>
+      <button id="no">No</button>
+    </div>
+  </div>
+
+  <!-- Hidden YouTube player (plays the song after she presses Yes) -->
+  <div id="ytWrap" style="position:fixed;left:-9999px;top:0;width:200px;height:200px;overflow:hidden;">
+    <div id="ytPlayer"></div>
+  </div>
+
+  <script>
+    // ====== EDIT THESE ======
+    // Only two GIFs are used: one on the main page, one after she says Yes.
+    const DEFAULT_GIF = "https://media1.tenor.com/m/xxPgBuwmddQAAAAC/cat.gif";
+    const YES_GIF     = "https://media1.tenor.com/m/ap_u2MfILG0AAAAC/pocoyo-feliz.gif";
+
+    const QUESTION = "Will you be my gadisku?";
+    const YES_MESSAGE = "WUHUUUUUU!!! I love you boo!! ";
+
+    // Text shown on the No button each time it is pressed (last one repeats).
+    const NO_MESSAGES = [
+      "No",
+      "Are you sure?",
+      "hey boo press yes lahhh",
+      "i belanja ayam gepuk later",
+      "yang pedassss",
+      "OKIE MASAK LEMAK",
+      "Hey what r u doin haa",
+      "gigi besi pls",
+      "tanak kawan ni",
+      "PLEASEEEEEEEEE",
+      "Just press Yes alreadyyyy"
+    ];
+
+    // Paste the YouTube link of "Ternyata Mengagumi" (jsprgry) here.
+    // It starts playing when she presses Yes.
+    const YOUTUBE_URL = "https://www.youtube.com/watch?v=ROethhe1X6s";
+    // ========================
+
+    const gif = document.getElementById("gif");
+    const question = document.getElementById("question");
+    const buttons = document.getElementById("buttons");
+    const yes = document.getElementById("yes");
+    const no = document.getElementById("no");
+    const musicToggle = document.getElementById("musicToggle");
+    const heartsLayer = document.getElementById("hearts");
+
+    question.textContent = QUESTION;
+    gif.src = DEFAULT_GIF;
+
+    const HEARTS = ["❤️", "💗", "💖", "💕", "💘", "🩷"];
+
+    function spawnHeart(mode) {
+      const h = document.createElement("span");
+      h.className = "heart " + (mode === "fall" ? "fall" : "rise");
+      h.textContent = HEARTS[Math.floor(Math.random() * HEARTS.length)];
+      const size = 14 + Math.random() * 26;
+      const duration = mode === "fall" ? 3 + Math.random() * 3 : 6 + Math.random() * 6;
+      h.style.left = Math.random() * 100 + "vw";
+      h.style.fontSize = size + "px";
+      h.style.animationDuration = duration + "s";
+      h.style.setProperty("--drift", (Math.random() * 120 - 60) + "px");
+      h.style.setProperty("--spin", (Math.random() * 120 - 60) + "deg");
+      heartsLayer.appendChild(h);
+      setTimeout(() => h.remove(), duration * 1000 + 200);
+    }
+
+    // Gentle floating hearts the whole time
+    setInterval(() => spawnHeart("rise"), 700);
+    for (let i = 0; i < 6; i++) setTimeout(() => spawnHeart("rise"), i * 250);
+
+    let noCount = 0;
+    no.addEventListener("click", () => {
+      noCount++;
+      no.textContent = NO_MESSAGES[Math.min(noCount, NO_MESSAGES.length - 1)];
+
+      // Yes grows a bit more every click, capped so it stays on screen.
+      const maxFont = Math.min(window.innerWidth * 0.22, 140);
+      const size = Math.min(22 + noCount * 14, maxFont);
+      yes.style.fontSize = size + "px";
+      yes.style.padding = (size * 0.4) + "px " + (size * 0.9) + "px";
+    });
+
+    let rainTimer = null;
+    yes.addEventListener("click", () => {
+      gif.src = YES_GIF;
+      question.textContent = YES_MESSAGE;
+      buttons.remove();
+
+      // Heart rain
+      for (let i = 0; i < 40; i++) setTimeout(() => spawnHeart("fall"), i * 60);
+      rainTimer = setInterval(() => {
+        spawnHeart("fall");
+        spawnHeart("fall");
+      }, 180);
+
+      // Music (allowed because it starts from her click)
+      startMusic();
+    });
+
+    // ---- YouTube music ----
+    function getVideoId(url) {
+      const m = String(url).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : null;
+    }
+
+    const videoId = getVideoId(YOUTUBE_URL);
+    let ytPlayer = null;
+    let ytReady = false;
+    let wantPlay = false;
+    let playing = false;
+
+    if (videoId) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    }
+
+    window.onYouTubeIframeAPIReady = function () {
+      ytPlayer = new YT.Player("ytPlayer", {
+        width: "200",
+        height: "200",
+        videoId: videoId,
+        playerVars: { loop: 1, playlist: videoId, playsinline: 1, controls: 0 },
+        events: {
+          onReady: () => {
+            ytReady = true;
+            if (wantPlay) { ytPlayer.setVolume(70); ytPlayer.playVideo(); }
+          },
+          onStateChange: (e) => {
+            playing = e.data === YT.PlayerState.PLAYING;
+            musicToggle.textContent = playing ? "🎵" : "🔇";
+          }
+        }
+      });
+    };
+
+    function startMusic() {
+      if (!videoId) return; // no link set yet
+      musicToggle.style.display = "block";
+      wantPlay = true;
+      if (ytReady) { ytPlayer.setVolume(70); ytPlayer.playVideo(); }
+    }
+
+    musicToggle.addEventListener("click", () => {
+      if (!ytReady) { wantPlay = true; return; }
+      if (playing) { wantPlay = false; ytPlayer.pauseVideo(); }
+      else { wantPlay = true; ytPlayer.playVideo(); }
+    });
+  </script>
+</body>
+</html>
